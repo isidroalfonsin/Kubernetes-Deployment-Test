@@ -31,3 +31,10 @@ Change the main.py file to add an environment variable called ENV and use it in 
 use docker run -p 8000:80 k8s-fast-api to run the docker image now in port 8000
 
 use curl http://localhost:8000 to test the application
+
+upload the docker image to docker hub with docker push isidroalfonsin/kubernetes-deployment-test:0.0.1
+
+The kubernetes cluster is created in Civo with 3 nodes and a simple firewall configuration
+
+create a deployment.yaml file with the content from the kubernetes documentation for a basic deployment and add the resources configuration.
+ 

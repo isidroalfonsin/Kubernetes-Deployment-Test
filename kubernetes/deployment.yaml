@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fast-api
+  labels:
+    app: fast-api # Labels useful to route traffic to the deployment
+spec: # Specification of the deployment
+  replicas: 3
+  selector: #wich pods to manage with the deployment and the labels to match
+    matchLabels:
+      app: fast-api
+  template: #template for each pod in the deployment
+    metadata:
+      labels:
+        app: fast-api
+    spec: # specification of the pod
+      containers:
+      - name: fast-api
+        image: isidroalfonsin/kubernetes-deployment-test:0.0.1
+        ports:
+        - containerPort: 80
+        resources:  # Resources useful to limit the resources used by the container
+          requests:
+            cpu: "200m"
+            memory: "300Mi"
+          limits:
+            cpu: "500m"
+            memory: "500Mi"
