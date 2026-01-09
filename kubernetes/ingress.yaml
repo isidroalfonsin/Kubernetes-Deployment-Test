@@ -16,3 +16,13 @@ spec:
                 name: fast-api
                 port:
                   number: 80
+    - host: 4cc5ad2f-7a0f-4a2e-a0d8-dca012fa3267.k8s.civo.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fast-api
+                port:
+                  number: 80

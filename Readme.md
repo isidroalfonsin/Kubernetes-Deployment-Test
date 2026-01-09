@@ -60,20 +60,72 @@ create the ingress.yaml file with the content from the kubernetes documentation 
 
 apply the ingress.yaml file with the command kubectl apply -f .
 
-I created a domain name in cloudflare and added the CNAME record to the ingress but there was an error with the site not loading and sending a DNS_PROBE_POSSIBLE error.
+## Troubleshooting
 
-i checked with kubectl get pods and the pods were in pending state.
-after checking with kubectl describe pod fast-api-5854f6fd66-qh8nl i saw that the pods were in pending state due to memory constraints. 
-the error was 
-"Events:
+### Issue 1: Pods in Pending State (Memory Constraints)
+
+After checking with `kubectl describe pod fast-api-5854f6fd66-qh8nl`, the pods were in pending state due to memory constraints. 
+
+**Error:**
+```
+Events:
   Type     Reason            Age                  From               Message
   ----     ------            ----                 ----               -------
   Warning  FailedScheduling  28m                  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint {node.kubernetes.io/memory-pressure: }, 2 Insufficient memory. preemption: 0/3 nodes are available: 1 Preemption is not helpful for scheduling, 2 No preemption victims found for incoming pod.
-  Warning  FailedScheduling  2m52s (x5 over 22m)  default-scheduler  0/3 nodes are available: 1 node(s) had untolerated taint {node.kubernetes.io/memory-pressure: }, 2 Insufficient memory. preemption: 0/3 nodes are available: 1 Preemption is not helpful for scheduling, 2 No preemption victims found for incoming pod."
+```
 
-  Then a new error appear in the pod the ErrImagePull and the problem was the docker image. after some research i found the problem was the docker image was build for arm64 and the cluster was using amd64. this happen because i build the docker image on my macbook which is arm64 and the Civo cluster is using amd64.
+**Solution:** Reduced memory requests and limits in `deployment.yaml` from 300Mi/500Mi to 64Mi/128Mi and reduced replicas from 3 to 1.
 
-  to fix this i use the docker buildx create --use --name multiarch-builder and then i use the docker buildx build --platform linux/amd64 -t isidroalfonsin/kubernetes-deployment-test:0.0.1 -f Dockerfile . --push
-  then i delete the old pod with the command kubectl delete pod fast-api-866b7d49d4-l9w4w and then i apply the deployment.yaml file with the command kubectl apply -f deployment.yaml
+### Issue 2: ErrImagePull (Architecture Mismatch)
 
-  now the site is loading but the response is not correct the problem now seems to be the A record in cloudflare. but using the curl command i can see the correct response.
+The docker image was built for ARM64 (MacBook) but the Civo cluster uses AMD64.
+
+**Solution:** 
+```bash
+docker buildx create --use --name multiarch-builder
+docker buildx build --platform linux/amd64 -t isidroalfonsin/kubernetes-deployment-test:0.0.1 -f Dockerfile . --push
+kubectl delete pod <pod-name>  # Force recreation with new image
+```
+
+### Issue 3: DNS Configuration
+
+Initially attempted to use a custom domain with Cloudflare, but this requires purchasing a domain and configuring nameservers at the domain registrar.
+
+**Final Solution:** Use Civo's auto-generated hostname instead. Added the Civo hostname to `ingress.yaml`:
+
+```yaml
+spec:
+  rules:
+    - host: 4cc5ad2f-7a0f-4a2e-a0d8-dca012fa3267.k8s.civo.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fast-api
+                port:
+                  number: 80
+```
+
+## Accessing the Application
+
+**URL:** http://4cc5ad2f-7a0f-4a2e-a0d8-dca012fa3267.k8s.civo.com
+
+Or test with curl:
+```bash
+curl http://4cc5ad2f-7a0f-4a2e-a0d8-dca012fa3267.k8s.civo.com
+```
+
+Expected response:
+```json
+{"Hello Sargento":"From: CIVO"}
+```
+
+## Useful Commands
+
+- `kubectl exec -it <pod-name> -- bash` - Enter the pod to check logs or environment variables
+- `kubectl get pods -w` - Watch pods status in real-time
+- `kubectl describe pod <pod-name>` - Get detailed pod information and events
+- `kubectl logs <pod-name>` - View pod logs
+
