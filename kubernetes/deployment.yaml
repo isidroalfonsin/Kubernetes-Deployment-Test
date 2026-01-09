@@ -26,3 +26,6 @@ spec: # Specification of the deployment
           limits:
             cpu: "500m"
             memory: "500Mi"
+        env:
+        - name: ENV
+          value: "CIVO"
